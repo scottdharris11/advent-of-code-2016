@@ -16,11 +16,18 @@ def solve_part1(lines: list[str]) -> int:
 @runner("Day 11", "Part 2")
 def solve_part2(lines: list[str]) -> int:
     """part 2 solving function"""
-    return 0
+    fps = FacilityPathSearcher(lines)
+    fps.start.pairs.append((1,1))
+    fps.start.pairs.append((1,1))
+    s = Search(fps)
+    solution = s.best(SearchMove(0, fps.start))
+    if solution is None:
+        return -1
+    return solution.cost
 
-def parse_items(item_type: str, line: str) -> list[str]:
+def parse_items(item_type: str, line: str) -> set[str]:
     """parse out items of a particular type from the supplied string"""
-    items = []
+    items = set()
     idx = line.find(item_type)
     while idx >= 0:
         bidx = idx-2
@@ -28,52 +35,28 @@ def parse_items(item_type: str, line: str) -> list[str]:
             if line[bidx] == ' ':
                 break
             bidx -= 1
-        items.append(line[bidx+1:idx-1])
+        items.add(line[bidx+1:idx-1])
         idx = line.find(item_type, idx + len(item_type))
     return items
 
-def newlist_append(l: list[str], item: str) -> list[str]:
-    """build new list with supplied item appended"""
-    nlist = list(l)
-    nlist.append(item)
-    return nlist
-
-def newlist_remove(l: list[str], item: str) -> list[str]:
-    """build new list with supplied item removed"""
-    nlist = list(l)
-    nlist.remove(item)
-    return nlist
-
 class FacilityState:
     """represent the current facility state"""
-    def __init__(self, floor: int, generators: dict[int,list[str]], chips: dict[int,list[str]]):
+    def __init__(self, floor: int, pairs: list[tuple[int,int]]):
         self.floor = floor
-        self.generators = {}
-        for f, items in generators.items():
-            self.generators[f] = sorted(items)
-        self.chips = {}
-        for f, items in chips.items():
-            self.chips[f] = sorted(items)
+        self.pairs = sorted(pairs)
 
     def __repr__(self):
-        return str((self.floor, self.generators, self.chips))
+        return str((self.floor, self.pairs))
 
     def __hash__(self) -> int:
-        h = hash(self.floor)
-        for f, items in self.generators.items():
-            h += hash((f, tuple(items)))
-        for f, items in self.chips.items():
-            h += hash((f, tuple(items)))
-        return h
+        return hash((self.floor, tuple(self.pairs)))
 
     def __eq__(self, other: object) -> bool:
         if other is None:
             return False
         if self.floor != other.floor:
             return False
-        if self.generators != other.generators:
-            return False
-        if self.chips != other.chips:
+        if self.pairs != other.pairs:
             return False
         return True
 
@@ -87,15 +70,116 @@ class FacilityState:
         #   - no generators
         #   - any microchip has matching generator
         for f in range(1,5):
-            if len(self.chips[f]) == 0:
+            chip_cnt = 0
+            gen_cnt = 0
+            for chip, gen in self.pairs:
+                chip_cnt = chip_cnt + 1 if chip == f else chip_cnt
+                gen_cnt = gen_cnt + 1 if gen == f else gen_cnt
+            if chip_cnt == 0:
                 continue
-            if len(self.generators[f]) == 0:
+            if gen_cnt == 0:
                 continue
-            for c in self.chips[f]:
-                compgen = c.split("-")[0]
-                if compgen not in self.generators[f]:
+            for chip, gen in self.pairs:
+                if chip == f and gen != f:
                     return False
         return True
+
+    def is_goal(self) -> bool:
+        """determine if the supplied state is the goal (everything on 4th floor)"""
+        if self.floor != 4:
+            return False
+        for chip, gen in self.pairs:
+            if chip != 4 or gen != 4:
+                return False
+        return True
+
+    def possible_moves(self) -> list:
+        """determine possible moves from curent location"""
+        # for moving up, check both chips and generators, for moving down
+        # just check chips
+        possible = []
+        possible.extend(self.moves_to_floor(False))
+        possible.extend(self.moves_to_floor(True))
+        return possible
+
+    def moves_to_floor(self, down: bool) -> list:
+        """build possible move states from current to the supplied floor"""
+        to = self.floor + 1
+        if down:
+            to = self.floor - 1
+        if to > 4 or to < 1:
+            return []
+
+        moves = set()
+        chips = []
+        gens = []
+        for idx, pair in enumerate(self.pairs):
+            chip, gen = pair
+            if chip == self.floor:
+                chips.append(idx)
+            if gen == self.floor:
+                gens.append(idx)
+            if chip == self.floor and gen == self.floor:
+                npairs = list(self.pairs)
+                npairs[idx] = (to, to)
+                nstate = FacilityState(to, npairs)
+                if nstate.valid():
+                    moves.add(nstate)
+
+        # all chips independently
+        for c in chips:
+            npairs = list(self.pairs)
+            _, cgen = npairs[c]
+            npairs[c] = (to, cgen)
+            nstate = FacilityState(to, npairs)
+            if nstate.valid():
+                moves.add(nstate)
+
+        # all chip combinations
+        for i, ia in enumerate(chips):
+            for _, ib in enumerate(chips, i):
+                npairs = list(self.pairs)
+                _, cgen = npairs[ia]
+                npairs[ia] = (to, cgen)
+                _, cgen = npairs[ib]
+                npairs[ib] = (to, cgen)
+                nstate = FacilityState(to, npairs)
+                if nstate.valid():
+                    moves.add(nstate)
+
+        # add generators independently
+        for g in gens:
+            npairs = list(self.pairs)
+            cchip, _ = npairs[g]
+            npairs[g] = (cchip, to)
+            nstate = FacilityState(to, npairs)
+            if nstate.valid():
+                moves.add(nstate)
+
+        # all generator combinations
+        for i, ia in enumerate(gens):
+            for _, ib in enumerate(gens, i):
+                npairs = list(self.pairs)
+                cchip, _ = npairs[ia]
+                npairs[ia] = (cchip, to)
+                cchip, _ = npairs[ib]
+                npairs[ib] = (cchip, to)
+                nstate = FacilityState(to, npairs)
+                if nstate.valid():
+                    moves.add(nstate)
+
+        # all chip/generator combinations
+        for chip in chips:
+            for gen in gens:
+                npairs = list(self.pairs)
+                _, cgen = npairs[chip]
+                npairs[chip] = (to, cgen)
+                cchip, _ = npairs[gen]
+                npairs[gen] = (cchip, to)
+                nstate = FacilityState(to, npairs)
+                if nstate.valid():
+                    moves.add(nstate)
+        return moves
 
 class FacilityPathSearcher(Searcher):
     """path search implementation for the facility"""
@@ -103,82 +187,32 @@ class FacilityPathSearcher(Searcher):
         generators = {}
         chips = {}
         for f, line in enumerate(lines):
-            generators[f+1] = parse_items("generator", line)
-            chips[f+1] = parse_items("microchip", line)
-        self.start = FacilityState(1, generators, chips)
+            for gen in parse_items("generator", line):
+                generators[gen] = f+1
+            for chip in parse_items("microchip", line):
+                chips[chip] = f+1
+        pairs = []
+        for gen, floor in generators.items():
+            chip_floor = chips[gen+"-compatible"]
+            pairs.append((chip_floor, floor))
+        self.start = FacilityState(1, pairs)
 
     def is_goal(self, obj: FacilityState) -> bool:
         """determine if the supplied state is the goal (everything on 4th floor)"""
-        if obj.floor != 4:
-            return False
-        for f in range(1,4):
-            if len(obj.generators[f]) > 0:
-                return False
-            if len(obj.chips[f]) > 0:
-                return False
-        return True
+        return obj.is_goal()
 
     def possible_moves(self, obj: FacilityState) -> list[SearchMove]:
         """determine possible moves from curent location"""
-        possible = []
-        possible.extend(self.moves_to_floor(obj, obj.floor+1))
-        possible.extend(self.moves_to_floor(obj, obj.floor-1))
-        return possible
-
-    def moves_to_floor(self, obj: FacilityState, to: int) -> list[SearchMove]:
-        """build possible move states from current to the supplied floor"""
-        if to > 4 or to < 1:
-            return []
-
-        # check each generator and chip individually to see if it can move
-        positems = []
         moves = []
-        for gen in obj.generators[obj.floor]:
-            positems.append(gen)
-            ngens = dict(obj.generators)
-            ngens[to] = newlist_append(ngens[to], gen)
-            ngens[obj.floor] = newlist_remove(ngens[obj.floor], gen)
-            nstate = FacilityState(to, ngens, obj.chips)
-            if nstate.valid():
-                moves.append(SearchMove(1,nstate))
-        for chip in obj.chips[obj.floor]:
-            positems.append(chip)
-            nchips = dict(obj.chips)
-            nchips[to] = newlist_append(nchips[to], chip)
-            nchips[obj.floor] = newlist_remove(nchips[obj.floor], chip)
-            nstate = FacilityState(to, obj.generators, nchips)
-            if nstate.valid():
-                moves.append(SearchMove(1,nstate))
-
-        # for each item that could move independently, combine them
-        # to see if we can move two at a time
-        for idxa, itema in enumerate(positems):
-            for _, itemb in enumerate(positems[idxa+1:]):
-                ngens = dict(obj.generators)
-                nchips = dict(obj.chips)
-                if itema.find("-") > 0:
-                    nchips[to] = newlist_append(nchips[to], itema)
-                    nchips[obj.floor] = newlist_remove(nchips[obj.floor], itema)
-                else:
-                    ngens[to] = newlist_append(ngens[to], itema)
-                    ngens[obj.floor] = newlist_remove(ngens[obj.floor], itema)
-                if itemb.find("-") > 0:
-                    nchips[to] = newlist_append(nchips[to], itemb)
-                    nchips[obj.floor] = newlist_remove(nchips[obj.floor], itemb)
-                else:
-                    ngens[to] = newlist_append(ngens[to], itemb)
-                    ngens[obj.floor] = newlist_remove(ngens[obj.floor], itemb)
-                nstate = FacilityState(to, ngens, nchips)
-                if nstate.valid():
-                    moves.append(SearchMove(1,nstate))
+        for m in obj.possible_moves():
+            moves.append(SearchMove(1,m))
         return moves
 
     def distance_from_goal(self, obj: FacilityState) -> int:
         """calculate distance from the goal"""
         d = 0
-        for f in range(1,5):
-            fic = len(obj.generators[f]) + len(obj.chips[f])
-            d += int(fic / 2) * (4-f+abs(obj.floor - f))
+        for p in obj.pairs:
+            d += 4-p[0] + 4-p[1]
         return d
 
 # Data
@@ -193,5 +227,4 @@ assert solve_part1(sample) == 11
 assert solve_part1(data) == 47
 
 # Part 2
-assert solve_part2(sample) == 0
-assert solve_part2(data) == 0
+assert solve_part2(data) == 71

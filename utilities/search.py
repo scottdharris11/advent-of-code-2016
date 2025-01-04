@@ -4,16 +4,18 @@ class PriorityQueue:
     """queue ordered by priority value"""
     def __init__(self) -> None:
         self.items = []
+        self.size = 0
 
     def empty(self) -> bool:
         """determines if queue is empty"""
-        return len(self.items) == 0
+        return self.size == 0
 
     def next(self) -> any:
         """dequeue the next value"""
-        n = len(self.items) - 1
+        n = self.size - 1
         item = self.items[n]
         self.items = self.items[:n]
+        self.size -= 1
         return item[0]
 
     def queue(self, obj: any, priority: int):
@@ -30,6 +32,7 @@ class PriorityQueue:
             self.items.append(qi)
         else:
             self.items.insert(idx, qi)
+        self.size += 1
 
 class SearchMove:
     """encapsulates the cost and state of a move"""
@@ -70,7 +73,7 @@ class Search:
         self.searcher = searcher
 
     # utilize a-star search approach to find the path to the goal
-    # with the lowest cost. 
+    # with the lowest cost.
     def best(self, init: SearchMove) -> SearchSolution:
         """find best path from the initial move"""
         q = PriorityQueue()
