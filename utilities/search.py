@@ -88,11 +88,11 @@ class Search:
                 break
 
             for move in self.searcher.possible_moves(current):
-                nCost = cost[current] + move.cost
-                cCost = cost.get(move.state, -1)
-                if cCost == -1 or nCost < cCost:
-                    cost[move.state] = nCost
-                    priority = nCost + self.searcher.distance_from_goal(move.state)
+                new_cost = cost[current] + move.cost
+                current_cost = cost.get(move.state, -1)
+                if current_cost == -1 or new_cost < current_cost:
+                    cost[move.state] = new_cost
+                    priority = new_cost + self.searcher.distance_from_goal(move.state)
                     q.queue(move.state, priority)
                     from_state[move.state] = current
 

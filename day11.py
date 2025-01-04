@@ -39,6 +39,26 @@ def parse_items(item_type: str, line: str) -> set[str]:
         idx = line.find(item_type, idx + len(item_type))
     return items
 
+def valid_state(pairs: list[tuple[int,int]]) -> bool:
+    """check to see if the state is valid"""
+    # for each floor, valid if:
+    #   - no microchips
+    #   - no generators
+    #   - any microchip has matching generator
+    for f in range(1,5):
+        chip_cnt = 0
+        gen_cnt = 0
+        chip_nogen = False
+        for chip, gen in pairs:
+            chip_cnt = chip_cnt + 1 if chip == f else chip_cnt
+            gen_cnt = gen_cnt + 1 if gen == f else gen_cnt
+            chip_nogen = True if chip == f and gen !=f else chip_nogen
+        if chip_cnt == 0 or gen_cnt == 0:
+            continue
+        if gen_cnt > 0 and chip_nogen:
+            return False
+    return True
+
 class FacilityState:
     """represent the current facility state"""
     def __init__(self, floor: int, pairs: list[tuple[int,int]]):
@@ -63,27 +83,6 @@ class FacilityState:
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def valid(self) -> bool:
-        """check to see if the state is valid"""
-        # for each floor, valid if:
-        #   - no microchips
-        #   - no generators
-        #   - any microchip has matching generator
-        for f in range(1,5):
-            chip_cnt = 0
-            gen_cnt = 0
-            for chip, gen in self.pairs:
-                chip_cnt = chip_cnt + 1 if chip == f else chip_cnt
-                gen_cnt = gen_cnt + 1 if gen == f else gen_cnt
-            if chip_cnt == 0:
-                continue
-            if gen_cnt == 0:
-                continue
-            for chip, gen in self.pairs:
-                if chip == f and gen != f:
-                    return False
-        return True
-
     def is_goal(self) -> bool:
         """determine if the supplied state is the goal (everything on 4th floor)"""
         if self.floor != 4:
@@ -95,21 +94,18 @@ class FacilityState:
 
     def possible_moves(self) -> list:
         """determine possible moves from curent location"""
-        # for moving up, check both chips and generators, for moving down
-        # just check chips
         possible = []
-        possible.extend(self.moves_to_floor(False))
-        possible.extend(self.moves_to_floor(True))
+        possible.extend(self.moves_to_floor(self.floor+1))
+        possible.extend(self.moves_to_floor(self.floor-1))
         return possible
 
-    def moves_to_floor(self, down: bool) -> list:
+    def moves_to_floor(self, to: int) -> list:
         """build possible move states from current to the supplied floor"""
-        to = self.floor + 1
-        if down:
-            to = self.floor - 1
         if to > 4 or to < 1:
             return []
 
+        # find all indexes active on the floor, when pair on
+        # same floor, see if we can move them together
         moves = set()
         chips = []
         gens = []
@@ -122,53 +118,42 @@ class FacilityState:
             if chip == self.floor and gen == self.floor:
                 npairs = list(self.pairs)
                 npairs[idx] = (to, to)
-                nstate = FacilityState(to, npairs)
-                if nstate.valid():
-                    moves.add(nstate)
+                if valid_state(npairs):
+                    moves.add(FacilityState(to, npairs))
 
-        # all chips independently
-        for c in chips:
+        # all chips independently and combined
+        for i, ca in enumerate(chips):
             npairs = list(self.pairs)
-            _, cgen = npairs[c]
-            npairs[c] = (to, cgen)
-            nstate = FacilityState(to, npairs)
-            if nstate.valid():
-                moves.add(nstate)
-
-        # all chip combinations
-        for i, ia in enumerate(chips):
-            for _, ib in enumerate(chips, i):
+            _, cgen = npairs[ca]
+            npairs[ca] = (to, cgen)
+            if valid_state(npairs):
+                moves.add(FacilityState(to, npairs))
+            for _, cb in enumerate(chips, i):
                 npairs = list(self.pairs)
-                _, cgen = npairs[ia]
-                npairs[ia] = (to, cgen)
-                _, cgen = npairs[ib]
-                npairs[ib] = (to, cgen)
-                nstate = FacilityState(to, npairs)
-                if nstate.valid():
-                    moves.add(nstate)
+                _, cgen = npairs[ca]
+                npairs[ca] = (to, cgen)
+                _, cgen = npairs[cb]
+                npairs[cb] = (to, cgen)
+                if valid_state(npairs):
+                    moves.add(FacilityState(to, npairs))
 
-        # add generators independently
-        for g in gens:
+        # all generators independently and combined
+        for i, ga in enumerate(gens):
             npairs = list(self.pairs)
-            cchip, _ = npairs[g]
-            npairs[g] = (cchip, to)
-            nstate = FacilityState(to, npairs)
-            if nstate.valid():
-                moves.add(nstate)
-
-        # all generator combinations
-        for i, ia in enumerate(gens):
-            for _, ib in enumerate(gens, i):
+            cchip, _ = npairs[ga]
+            npairs[ga] = (cchip, to)
+            if valid_state(npairs):
+                moves.add(FacilityState(to, npairs))
+            for _, gb in enumerate(gens, i):
                 npairs = list(self.pairs)
-                cchip, _ = npairs[ia]
-                npairs[ia] = (cchip, to)
-                cchip, _ = npairs[ib]
-                npairs[ib] = (cchip, to)
-                nstate = FacilityState(to, npairs)
-                if nstate.valid():
-                    moves.add(nstate)
+                cchip, _ = npairs[ga]
+                npairs[ga] = (cchip, to)
+                cchip, _ = npairs[gb]
+                npairs[gb] = (cchip, to)
+                if valid_state(npairs):
+                    moves.add(FacilityState(to, npairs))
 
-        # all chip/generator combinations
+        # all valid chip/generator combinations
         for chip in chips:
             for gen in gens:
                 npairs = list(self.pairs)
@@ -176,9 +161,8 @@ class FacilityState:
                 npairs[chip] = (to, cgen)
                 cchip, _ = npairs[gen]
                 npairs[gen] = (cchip, to)
-                nstate = FacilityState(to, npairs)
-                if nstate.valid():
-                    moves.add(nstate)
+                if valid_state(npairs):
+                    moves.add(FacilityState(to, npairs))
         return moves
 
 class FacilityPathSearcher(Searcher):
@@ -217,7 +201,8 @@ class FacilityPathSearcher(Searcher):
 
 # Data
 data = read_lines("input/day11/input.txt")
-sample = """The first floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.
+sample = \
+"""The first floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.
 The second floor contains a hydrogen generator.
 The third floor contains a lithium generator.
 The fourth floor contains nothing relevant.""".splitlines()
