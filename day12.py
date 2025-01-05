@@ -18,7 +18,16 @@ def solve_part1(lines: list[str]) -> int:
 @runner("Day 12", "Part 2")
 def solve_part2(lines: list[str]) -> int:
     """part 2 solving function"""
-    return 0
+    registers = {}
+    instructions = parse_instructions(lines, registers)
+    registers["c"] = 1
+    max_idx = len(instructions)-1
+    idx = 0
+    while True:
+        idx = instructions[idx].execute(idx, registers)
+        if idx > max_idx:
+            break
+    return registers["a"]
 
 class Instruction:
     """definition for instruction"""
@@ -102,9 +111,8 @@ jnz a 2
 dec a""".splitlines()
 
 # Part 1
-#assert solve_part1(sample) == 42
+assert solve_part1(sample) == 42
 assert solve_part1(data) == 318007
 
 # Part 2
-assert solve_part2(sample) == 0
-assert solve_part2(data) == 0
+assert solve_part2(data) == 9227661
