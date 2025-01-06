@@ -71,6 +71,7 @@ class Search:
     """search implementation"""
     def __init__(self, searcher: Searcher) -> None:
         self.searcher = searcher
+        self.cost_constraint = 0
 
     # utilize a-star search approach to find the path to the goal
     # with the lowest cost.
@@ -89,6 +90,8 @@ class Search:
 
             for move in self.searcher.possible_moves(current):
                 new_cost = cost[current] + move.cost
+                if self.cost_constraint > 0 and new_cost > self.cost_constraint:
+                    continue
                 current_cost = cost.get(move.state, -1)
                 if current_cost == -1 or new_cost < current_cost:
                     cost[move.state] = new_cost

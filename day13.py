@@ -21,10 +21,9 @@ def solve_part2(designer: int) -> int:
     for loc in check_locs:
         ms = MazeSearcher(designer, loc)
         s = Search(ms)
+        s.cost_constraint = 50
         solution = s.best(SearchMove(0, ms.start))
-        if solution is None:
-            continue
-        if solution.cost <= 50:
+        if solution is not None:
             reachable += 1
     return reachable
 
