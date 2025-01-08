@@ -19,14 +19,15 @@ def fill_and_check(init: str, disk_size: int) -> str:
     work_size = len(init)
     prev_reverse = ""
     while work_size < disk_size:
-        prev_reverse = dragonc(work, prev_reverse)
+        prev_reverse = chunked_dragon(work, prev_reverse)
         csize = len(work[-1])
         work_size += csize
         if work_size > disk_size:
             cut = csize - (work_size-disk_size)
             work[-1] = work[-1][:cut]
         #print(work_size)
-    cs = chunked_checksum("".join(work))
+    data = "".join(work)
+    cs = chunked_checksum(data)
     while len(cs) % 2 == 0:
         cs = chunked_checksum(cs)
         #print(len(cs))
@@ -36,10 +37,10 @@ def dragon(a: str) -> str:
     """dragon curve a supplied str"""
     chunks = []
     chunks.append(a)
-    dragonc(chunks, "")
+    chunked_dragon(chunks, "")
     return "".join(chunks)
 
-def dragonc(chunks: list[str], pr: str) -> str:
+def chunked_dragon(chunks: list[str], pr: str) -> str:
     """build next chunk of a dragon stream"""
     c = chunks[-1]
     r = chunked_reverse(c) + pr
@@ -49,10 +50,8 @@ def dragonc(chunks: list[str], pr: str) -> str:
 def chunked_reverse(a:str) -> str:
     """perform reversal of supplied string in chunks"""
     cr = ""
-    for end in range(len(a), -1, -10):
-        start = end - 10
-        if start < 0:
-            start = 0
+    for end in range(len(a), -1, -40):
+        start = end - 40 if end - 40 >= 0 else 0
         cr += reverse(a[start:end])
     return cr
 
@@ -67,8 +66,8 @@ def reverse(a: str) -> str:
 def chunked_checksum(a:str) -> str:
     """build checksum by chunking input string"""
     cs = ""
-    for start in range(0, len(a), 10):
-        cs += checksum(a[start:start+10])
+    for start in range(0, len(a), 80):
+        cs += checksum(a[start:start+80])
     return cs
 
 @functools.cache
