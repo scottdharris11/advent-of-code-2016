@@ -11,7 +11,12 @@ def solve_part1(lines: list[str]) -> int:
 @runner("Day 20", "Part 2")
 def solve_part2(lines: list[str]) -> int:
     """part 2 solving function"""
-    return 0
+    dblocks = parse_deny_blocks(lines)
+    allowed = dblocks[0][0]
+    for didx in range(1, len(dblocks)):
+        allowed += dblocks[didx][0] - dblocks[didx-1][1] - 1
+    allowed += 4294967295 - dblocks[-1][1]
+    return allowed
 
 def parse_deny_blocks(lines: list[str]) -> list[tuple[int,int]]:
     """parse the deny blocks from input into an ordered list with overlaps resolved"""
@@ -51,5 +56,5 @@ assert solve_part1(sample) == 3
 assert solve_part1(data) == 14975795
 
 # Part 2
-assert solve_part2(sample) == 0
-assert solve_part2(data) == 0
+assert solve_part2(sample) == 4294967288
+assert solve_part2(data) == 101
