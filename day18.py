@@ -14,10 +14,11 @@ def solve_part2(first: str) -> int:
 
 def safe_tiles(first: str, rows: int) -> int:
     """count the total amount of safe tiles"""
+    length = len(first)
     safe = first.count(SAFE)
     tiles = first
     for _ in range(rows-1):
-        tiles = plot_tiles(tiles)
+        tiles = plot_tiles(tiles, length)
         safe += tiles.count(SAFE)
     return safe
 
@@ -25,15 +26,14 @@ SAFE = '.'
 TRAP = '^'
 TRAP_RULES = {TRAP+TRAP+SAFE: 1, SAFE+TRAP+TRAP: 1, TRAP+SAFE+SAFE: 1, SAFE+SAFE+TRAP: 1}
 
-def plot_tiles(prev: str) -> str:
+def plot_tiles(prev: str, length: int) -> str:
     """plot the tiles based on the previous tile row"""
-    pl = len(prev)
     tiles = ""
-    for i in range(pl):
+    for i in range(length):
         check = ""
         if i == 0:
             check = SAFE + prev[i:i+2]
-        elif i == pl-1:
+        elif i == length-1:
             check = prev[i-1:i+1] + SAFE
         else:
             check = prev[i-1:i+2]
@@ -56,10 +56,10 @@ sample2 = """.^^.^.^^^^
 .^^^..^.^^
 ^^.^^^..^^""".splitlines()
 
-for i in range(0, len(sample)-1, 1):
-    assert plot_tiles(sample[i]) == sample[i+1]
-for i in range(0, len(sample2)-1, 1):
-    assert plot_tiles(sample2[i]) == sample2[i+1]
+for t in range(0, len(sample)-1, 1):
+    assert plot_tiles(sample[t],len(sample[t])) == sample[t+1]
+for t in range(0, len(sample2)-1, 1):
+    assert plot_tiles(sample2[t],len(sample2[t])) == sample2[t+1]
 
 # Part 1
 assert solve_part1(sample[0],3) == 6
