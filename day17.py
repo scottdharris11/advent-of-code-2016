@@ -14,9 +14,10 @@ def solve_part1(key: str) -> str:
     return solution.path[-1][1]
 
 @runner("Day 17", "Part 2")
-def solve_part2(key: str) -> str:
+def solve_part2(key: str) -> int:
     """part 2 solving function"""
-    return ""
+    vs = VaultSearcher(key)
+    return longest_path(vs)
 
 MOVES = "UDLR"
 
@@ -53,6 +54,23 @@ class VaultSearcher(Searcher):
         pos, _ = obj
         return abs(self.goal[0]-pos[0]) + abs(self.goal[1]-pos[1])
 
+def longest_path(vs: VaultSearcher) -> int:
+    """find the longest path"""
+    queue = []
+    queue.append(vs.start)
+    maxpath = -1
+    while len(queue) > 0:
+        cur = queue.pop(-1)
+        if vs.is_goal(cur):
+            pl = len(cur[1])
+            if maxpath == -1 or pl > maxpath:
+                maxpath = pl
+            continue
+        moves = vs.possible_moves(cur)
+        for move in moves:
+            queue.append(move.state)
+    return maxpath
+
 # Part 1
 assert solve_part1("ihgpwlah") == "DDRRRD"
 assert solve_part1("kglvqrro") == "DDUDRLRRUDRD"
@@ -60,4 +78,7 @@ assert solve_part1("ulqzkmiv") == "DRURDRUDDLLDLUURRDULRLDUUDDDRR"
 assert solve_part1("gdjjyniy") == "DUDDRLRRRD"
 
 # Part 2
-assert solve_part2("gdjjyniy") == ""
+assert solve_part2("ihgpwlah") == 370
+assert solve_part2("kglvqrro") == 492
+assert solve_part2("ulqzkmiv") == 830
+assert solve_part2("gdjjyniy") == 578
