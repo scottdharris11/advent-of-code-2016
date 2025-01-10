@@ -89,10 +89,17 @@ class RotateByLetter(Rule):
         idx = s.find(self.letter)
         length = len(s)
         if self.reverse:
-            steps = length - idx
-            if steps >= 4:
-                steps += 1
-            pivot = steps % length
+            # how can we do this without mapping
+            # idx 1 -> pivot 1
+            # idx 3 -> pivot 2
+            # idx 5 -> pivot 3
+            # idx 7 -> pivot 4
+            # idx 2 -> pivot 6
+            # idx 4 -> pivot 7
+            # idx 6 -> pivot 0
+            # idx 0 -> pivot 1
+            rp = {1:1, 3:2, 5:3, 7: 4, 2: 6, 4: 7, 6: 0, 0: 1}
+            pivot = rp[idx]
         else:
             steps = idx + 1
             if idx >= 4:
@@ -196,6 +203,16 @@ assert test_rule.apply("ecabd") == "decab"
 test_rule = parse_rule("rotate based on position of letter d", True)
 assert test_rule.apply("decab") == "ecabd"
 
+TEST_STRING = "abcdefgh"
+for test_c in TEST_STRING:
+    test_rule_text = "rotate based on position of letter " + test_c
+    test_rule = parse_rule(test_rule_text, False)
+    test_out = test_rule.apply(TEST_STRING)
+    test_rule = parse_rule(test_rule_text, True)
+    reverse_out = test_rule.apply(test_out)
+    #print((test_c, test_string, test_out, reverse_out))
+    assert reverse_out == TEST_STRING
+
 test_rule = parse_rule("reverse positions 0 through 4", False)
 assert test_rule.apply("edcba") == "abcde"
 test_rule = parse_rule("reverse positions 0 through 4", True)
@@ -216,4 +233,4 @@ assert solve_part1(data, "abcdefgh") == "gfdhebac"
 
 # Part 2
 assert solve_part2(sample, "decab") == "abcde"
-assert solve_part2(data, "fbgdceah") == ""
+assert solve_part2(data, "fbgdceah") == "dhaegfbc"
