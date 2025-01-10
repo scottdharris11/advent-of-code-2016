@@ -6,17 +6,21 @@ from utilities.runner import runner
 @runner("Day 21", "Part 1")
 def solve_part1(lines: list[str], start: str) -> str:
     """part 1 solving function"""
-    rules = parse_rules(lines)
+    rules = parse_rules(lines, False)
     out = start
     for rule in rules:
         out = rule.apply(out)
     return out
 
 @runner("Day 21", "Part 2")
-def solve_part2(lines: list[str]) -> int:
+def solve_part2(lines: list[str], start: str) -> str:
     """part 2 solving function"""
-    return 0
-
+    rules = parse_rules(lines, True)
+    rules.reverse()
+    out = start
+    for rule in rules:
+        out = rule.apply(out)
+    return out
 
 SWAP_POS_MATCH = re.compile(r"swap position ([\d]+) with position ([\d]+)")
 SWAP_LETTER_MATCH = re.compile(r"swap letter ([a-z]) with letter ([a-z])")
@@ -33,19 +37,19 @@ class Rule:
 
 class SwapPosition(Rule):
     """swap position rule definition"""
-    def __init__(self, match: re.Match):
-        self.from_pos = int(match.group(1))
-        self.to_pos = int(match.group(2))
+    def __init__(self, match: re.Match, _: bool):
+        self.pos1 = int(match.group(1))
+        self.pos2 = int(match.group(2))
 
     def apply(self, s: str) -> str:
         """apply the rule to the supplied string"""
-        minp = min(self.to_pos, self.from_pos)
-        maxp = max(self.to_pos, self.from_pos)
+        minp = min(self.pos2, self.pos1)
+        maxp = max(self.pos2, self.pos1)
         return "".join([s[0:minp],s[maxp:maxp+1],s[minp+1:maxp],s[minp:minp+1],s[maxp+1:]])
 
 class SwapLetter(Rule):
     """swap letter rule definition"""
-    def __init__(self, match: re.Match):
+    def __init__(self, match: re.Match, _: bool):
         self.from_letter = match.group(1)[0]
         self.to_letter = match.group(2)[0]
 
@@ -61,33 +65,44 @@ class SwapLetter(Rule):
 
 class RotateByPos(Rule):
     """swap letter rule definition"""
-    def __init__(self, match: re.Match):
+    def __init__(self, match: re.Match, reverse: bool):
         self.dir = match.group(1)
+        if reverse:
+            self.dir = "left" if self.dir == "right" else "right"
         self.steps = int(match.group(2))
 
     def apply(self, s: str) -> str:
         """apply the rule to the supplied string"""
-        if self.dir == "left":
-            return s[self.steps:] + s[:self.steps]
-        pivot = len(s) - self.steps
+        pivot = self.steps
+        if self.dir == "right":
+            pivot = len(s) - self.steps
         return s[pivot:] + s[:pivot]
 
 class RotateByLetter(Rule):
     """swap letter rule definition"""
-    def __init__(self, match: re.Match):
+    def __init__(self, match: re.Match, reverse: bool):
         self.letter = match.group(1)
+        self.reverse = reverse
 
     def apply(self, s: str) -> str:
         """apply the rule to the supplied string"""
         idx = s.find(self.letter)
-        pivot = len(s) - idx - 1
-        if idx >= 4:
-            pivot -= 1
+        length = len(s)
+        if self.reverse:
+            steps = length - idx
+            if steps >= 4:
+                steps += 1
+            pivot = steps % length
+        else:
+            steps = idx + 1
+            if idx >= 4:
+                steps += 1
+            pivot = length - (steps % length)
         return s[pivot:] + s[:pivot]
 
 class Reverse(Rule):
     """swap letter rule definition"""
-    def __init__(self, match: re.Match):
+    def __init__(self, match: re.Match, _: bool):
         self.from_pos = int(match.group(1))
         self.to_pos = int(match.group(2))
 
@@ -101,9 +116,13 @@ class Reverse(Rule):
 
 class Move(Rule):
     """swap letter rule definition"""
-    def __init__(self, match: re.Match):
-        self.from_pos = int(match.group(1))
-        self.to_pos = int(match.group(2))
+    def __init__(self, match: re.Match, reverse: bool):
+        if reverse:
+            self.from_pos = int(match.group(2))
+            self.to_pos = int(match.group(1))
+        else:
+            self.from_pos = int(match.group(1))
+            self.to_pos = int(match.group(2))
 
     def apply(self, s: str) -> str:
         """apply the rule to the supplied string"""
@@ -112,7 +131,7 @@ class Move(Rule):
         out = out[:self.to_pos] + c + out[self.to_pos:]
         return out
 
-def parse_rule(line: str) -> Rule:
+def parse_rule(line: str, reverse: bool) -> Rule:
     """Parse rule"""
     rules = [
         (SWAP_POS_MATCH, SwapPosition),
@@ -127,14 +146,14 @@ def parse_rule(line: str) -> Rule:
         mr, r = rule
         match = mr.match(line)
         if match is not None:
-            return r(match)
+            return r(match, reverse)
     raise ValueError("no rule match")
 
-def parse_rules(lines: list[str]) -> list[Rule]:
+def parse_rules(lines: list[str], reverse: bool) -> list[Rule]:
     """parse rules from the lines"""
     rules = []
     for line in lines:
-        rules.append(parse_rule(line))
+        rules.append(parse_rule(line, reverse))
     return rules
 
 # Data
@@ -149,29 +168,52 @@ rotate based on position of letter b
 rotate based on position of letter d""".splitlines()
 
 # Rule tests
-test_rule = parse_rule("swap position 4 with position 0")
+test_rule = parse_rule("swap position 4 with position 0", False)
 assert test_rule.apply("abcde") == "ebcda"
-test_rule = parse_rule("swap letter d with letter b")
+test_rule = parse_rule("swap position 4 with position 0", True)
+assert test_rule.apply("ebcda") == "abcde"
+
+test_rule = parse_rule("swap letter d with letter b", False)
 assert test_rule.apply("ebcda") == "edcba"
-test_rule = parse_rule("rotate left 1 step")
+test_rule = parse_rule("swap letter d with letter b", True)
+assert test_rule.apply("edcba") == "ebcda"
+
+test_rule = parse_rule("rotate left 1 step", False)
 assert test_rule.apply("abcde") == "bcdea"
-test_rule = parse_rule("rotate right 2 steps")
+test_rule = parse_rule("rotate left 1 step", True)
+assert test_rule.apply("bcdea") == "abcde"
+test_rule = parse_rule("rotate right 2 steps", False)
 assert test_rule.apply("abcde") == "deabc"
-test_rule = parse_rule("rotate based on position of letter b")
+test_rule = parse_rule("rotate right 2 steps", True)
+assert test_rule.apply("deabc") == "abcde"
+
+test_rule = parse_rule("rotate based on position of letter b", False)
 assert test_rule.apply("abdec") == "ecabd"
-test_rule = parse_rule("rotate based on position of letter d")
+test_rule = parse_rule("rotate based on position of letter b", True)
+assert test_rule.apply("ecabd") == "abdec"
+test_rule = parse_rule("rotate based on position of letter d", False)
 assert test_rule.apply("ecabd") == "decab"
-test_rule = parse_rule("reverse positions 0 through 4")
+test_rule = parse_rule("rotate based on position of letter d", True)
+assert test_rule.apply("decab") == "ecabd"
+
+test_rule = parse_rule("reverse positions 0 through 4", False)
 assert test_rule.apply("edcba") == "abcde"
-test_rule = parse_rule("move position 1 to position 4")
+test_rule = parse_rule("reverse positions 0 through 4", True)
+assert test_rule.apply("abcde") == "edcba"
+
+test_rule = parse_rule("move position 1 to position 4", False)
 assert test_rule.apply("bcdea") == "bdeac"
-test_rule = parse_rule("move position 3 to position 0")
+test_rule = parse_rule("move position 1 to position 4", True)
+assert test_rule.apply("bdeac") == "bcdea"
+test_rule = parse_rule("move position 3 to position 0", False)
 assert test_rule.apply("bdeac") == "abdec"
+test_rule = parse_rule("move position 3 to position 0", True)
+assert test_rule.apply("abdec") == "bdeac"
 
 # Part 1
 assert solve_part1(sample, "abcde") == "decab"
 assert solve_part1(data, "abcdefgh") == "gfdhebac"
 
 # Part 2
-assert solve_part2(sample) == 0
-assert solve_part2(data) == 0
+assert solve_part2(sample, "decab") == "abcde"
+assert solve_part2(data, "fbgdceah") == ""
