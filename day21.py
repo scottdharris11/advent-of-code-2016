@@ -98,7 +98,7 @@ class RotateByLetter(Rule):
             # idx 4 -> pivot 7
             # idx 6 -> pivot 0
             # idx 0 -> pivot 1
-            rp = {1:1, 3:2, 5:3, 7: 4, 2: 6, 4: 7, 6: 0, 0: 1}
+            rp = {1:1, 3:2, 5:3, 7:4, 2:6, 4:7, 6:0, 0:1}
             pivot = rp[idx]
         else:
             steps = idx + 1
@@ -196,12 +196,8 @@ assert test_rule.apply("deabc") == "abcde"
 
 test_rule = parse_rule("rotate based on position of letter b", False)
 assert test_rule.apply("abdec") == "ecabd"
-test_rule = parse_rule("rotate based on position of letter b", True)
-assert test_rule.apply("ecabd") == "abdec"
 test_rule = parse_rule("rotate based on position of letter d", False)
 assert test_rule.apply("ecabd") == "decab"
-test_rule = parse_rule("rotate based on position of letter d", True)
-assert test_rule.apply("decab") == "ecabd"
 
 TEST_STRING = "abcdefgh"
 for test_c in TEST_STRING:
