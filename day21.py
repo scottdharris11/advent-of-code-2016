@@ -4,9 +4,13 @@ from utilities.data import read_lines
 from utilities.runner import runner
 
 @runner("Day 21", "Part 1")
-def solve_part1(lines: list[str]) -> int:
+def solve_part1(lines: list[str], start: str) -> str:
     """part 1 solving function"""
-    return 0
+    rules = parse_rules(lines)
+    out = start
+    for rule in rules:
+        out = rule.apply(out)
+    return out
 
 @runner("Day 21", "Part 2")
 def solve_part2(lines: list[str]) -> int:
@@ -126,9 +130,23 @@ def parse_rule(line: str) -> Rule:
             return r(match)
     raise ValueError("no rule match")
 
+def parse_rules(lines: list[str]) -> list[Rule]:
+    """parse rules from the lines"""
+    rules = []
+    for line in lines:
+        rules.append(parse_rule(line))
+    return rules
+
 # Data
 data = read_lines("input/day21/input.txt")
-sample = """""".splitlines()
+sample = """swap position 4 with position 0
+swap letter d with letter b
+reverse positions 0 through 4
+rotate left 1 step
+move position 1 to position 4
+move position 3 to position 0
+rotate based on position of letter b
+rotate based on position of letter d""".splitlines()
 
 # Rule tests
 test_rule = parse_rule("swap position 4 with position 0")
@@ -151,8 +169,8 @@ test_rule = parse_rule("move position 3 to position 0")
 assert test_rule.apply("bdeac") == "abdec"
 
 # Part 1
-assert solve_part1(sample) == 0
-assert solve_part1(data) == 0
+assert solve_part1(sample, "abcde") == "decab"
+assert solve_part1(data, "abcdefgh") == "gfdhebac"
 
 # Part 2
 assert solve_part2(sample) == 0
