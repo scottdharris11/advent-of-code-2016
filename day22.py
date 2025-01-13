@@ -42,28 +42,22 @@ class Node:
 
 class StorageState:
     """storage state definition"""
-    def __init__(self, s: list[list[tuple[int,int]]], gdata: tuple[int,int], fdata: tuple[int,int]):
-        rows = []
-        for row in s:
-            rows.append(tuple(row))
-        self.grid = tuple(rows)
-        self.goal_loc = gdata
+    def __init__(self, mdata: tuple[int,int], fdata: tuple[int,int]):
+        self.memory_loc = mdata
         self.free_loc = fdata
 
     def __repr__(self):
-        return str((self.goal_loc, self.free_loc, self.grid))
+        return str((self.memory_loc, self.free_loc))
 
     def __hash__(self) -> int:
-        return hash((self.goal_loc, self.free_loc, self.grid))
+        return hash((self.memory_loc, self.free_loc))
 
     def __eq__(self, other: object) -> bool:
         if other is None:
             return False
-        if self.goal_loc != other.goal_loc:
+        if self.memory_loc != other.memory_loc:
             return False
         if self.free_loc != other.free_loc:
-            return False
-        if self.grid != other.grid:
             return False
         return True
 
@@ -75,6 +69,7 @@ class StorageMoveSearcher(Searcher):
     def __init__(self, nodes: list[Node]) -> None:
         max_x = -1
         max_y = -1
+        free_max = 0
         nodes_by_loc = {}
         for node in nodes:
             if max_x == -1 or node.loc[0] > max_x:
@@ -82,58 +77,53 @@ class StorageMoveSearcher(Searcher):
             if max_y == -1 or node.loc[1] > max_y:
                 max_y = node.loc[1]
             nodes_by_loc[node.loc] = node
+            if node.used == 0:
+                free_max = node.size
         self.height = max_y + 1
         self.width = max_x + 1
-        grid = []
+        self.grid = []
         free = None
         for y in range(self.height):
             row = []
             for x in range(self.width):
                 node = nodes_by_loc[(x,y)]
-                row.append((node.used, node.avail))
-                if node.used == 0:
-                    free = (x, y)
-            grid.append(row)
-        self.start = StorageState(grid, (max_x,0), free)
+                if node.used > free_max:
+                    row.append('#')
+                else:
+                    row.append('.')
+                    if node.used == 0:
+                        free = (x, y)
+            self.grid.append(row)
+        self.start = StorageState((max_x,0), free)
         self.goal = (0,0)
 
     def is_goal(self, obj: StorageState) -> bool:
         """determine if the supplied state is the goal (goal storage at goal location)"""
-        return obj.goal_loc == self.goal
+        return obj.memory_loc == self.goal
 
     def possible_moves(self, obj: StorageState) -> list[SearchMove]:
         """determine possible moves from curent location"""
-        sgrid = []
-        for y in range(self.height):
-            srow = []
-            for x in range(self.width):
-                srow.append(obj.grid[y][x])
-            sgrid.append(srow)
         moves = []
         x, y = obj.free_loc
-        free_used, free_avail = obj.grid[y][x]
         for m in [(1,0),(-1,0),(0,1),(0,-1)]:
             to_x = x + m[0]
             to_y = y + m[1]
             if to_x < 0 or to_x >= self.width or to_y < 0 or to_y >= self.height:
                 continue
-            to_used, to_avail = obj.grid[to_y][to_x]
-            if to_used > free_avail:
+            if self.grid[to_y][to_x] == '#':
                 continue
-            gloc = (x, y) if (to_x, to_y) == obj.goal_loc else obj.goal_loc
-            sgrid[y][x] = sgrid[to_y][to_x]
-            sgrid[to_y][to_x] = (free_used, free_avail)
-            moves.append(SearchMove(1, StorageState(sgrid, gloc, (to_x, to_y))))
-            sgrid[y][x] = (free_used, free_used)
-            sgrid[to_y][to_x] = (to_used, to_avail)
+            mloc = (x, y) if (to_x, to_y) == obj.memory_loc else obj.memory_loc
+            moves.append(SearchMove(1, StorageState(mloc, (to_x, to_y))))
         return moves
 
     def distance_from_goal(self, obj: StorageState) -> int:
         """calculate distance from the goal"""
-        memx, memy = obj.goal_loc
+        memx, memy = obj.memory_loc
         goalx, goaly = self.goal
         freex, freey = obj.free_loc
-        return abs(memx - goalx) + abs(memy - goaly) + abs(memx - freex) + abs(memy - freey)
+        d = abs(memx - goalx) + abs(memy - goaly)
+        d += (abs(memx - freex) + abs(memy - freey)) * 10
+        return d
 
 def viable_pair(a: Node, b: Node) -> bool:
     """determine if pair is viable"""
@@ -170,4 +160,4 @@ assert solve_part1(data) == 901
 
 # Part 2
 assert solve_part2(sample) == 7
-assert solve_part2(data) == 0
+assert solve_part2(data) == 238
