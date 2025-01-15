@@ -8,36 +8,17 @@ def solve_part1(lines: list[str]) -> int:
     """part 1 solving function"""
     locations, routes = best_routes(lines)
     paths = potential_paths(locations[1:], "", [])
-    best = -1
-    for path in paths:
-        f = '0'
-        steps = 0
-        for t in path:
-            steps += routes[f+t]
-            f = t
-        if best == -1 or steps < best:
-            best = steps
-    return best
+    return best_path(routes, paths, False)
 
 @runner("Day 24", "Part 2")
 def solve_part2(lines: list[str]) -> int:
     """part 2 solving function"""
     locations, routes = best_routes(lines)
     paths = potential_paths(locations[1:], "", [])
-    best = -1
-    for path in paths:
-        f = '0'
-        steps = 0
-        for t in path:
-            steps += routes[f+t]
-            f = t
-        steps += routes[f+'0']
-        if best == -1 or steps < best:
-            best = steps
-    return best
+    return best_path(routes, paths, True)
 
 class DuctSearcher(Searcher):
-    """search implementation for the storage migrations"""
+    """search implementation for the duct paths"""
     def __init__(self, lines: list[str]) -> None:
         self.walls = set()
         self.locations = {}
@@ -81,7 +62,7 @@ def best_routes(lines: list[str]) -> tuple[list[str],dict[str,int]]:
             start = (ds.locations[t], ds.locations[f])
             solution = s.best(SearchMove(0, start))
             if solution is None:
-                return -1
+                raise ValueError("no path between locations: " + f + "," + t)
             br[f+t] = solution.cost
             br[t+f] = solution.cost
     return locations, br
@@ -95,6 +76,21 @@ def potential_paths(locations: list[str], path: str, paths: list[str]) -> list[s
         nlocs.remove(l)
         potential_paths(nlocs, path + l, paths)
     return paths
+
+def best_path(routes: dict[str,int], paths: list[str], back_home: bool) -> int:
+    """determine the best path (least steps)"""
+    best = -1
+    for path in paths:
+        f = '0'
+        steps = 0
+        for t in path:
+            steps += routes[f+t]
+            f = t
+        if back_home:
+            steps += routes[f+'0']
+        if best == -1 or steps < best:
+            best = steps
+    return best
 
 # Data
 data = read_lines("input/day24/input.txt")
