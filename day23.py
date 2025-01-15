@@ -1,5 +1,4 @@
 """utility imports"""
-import time
 from utilities.data import read_lines
 from utilities.runner import runner
 
@@ -18,6 +17,7 @@ def run_program(lines: list[str], a_start: int) -> int:
     registers = {}
     instructions = parse_instructions(lines, registers)
     if len(instructions) > 7:
+        # override main loops and replace with multiplication ops
         ni = Instruction("mul c d", registers)
         np = Instruction("nop 0", registers)
         instructions[5] = np
@@ -34,7 +34,6 @@ def run_program(lines: list[str], a_start: int) -> int:
     max_idx = len(instructions)-1
     idx = 0
     while True:
-        #time.sleep(0.200)
         #print("executing instruction " + str(idx+1) + ": " + str(registers))
         idx = instructions[idx].execute(idx, registers, instructions)
         if idx < 0 or idx > max_idx:
